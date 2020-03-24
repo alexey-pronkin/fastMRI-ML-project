@@ -19,7 +19,7 @@ def create_mask_for_mask_type(mask_type_str, center_fractions, accelerations):
 
 
 class MaskFunc():
-    def __init__(self, center_fractions, accelerations):
+    def __init__(self, center_fractions, accelerations, seed=None):
         """
         Args:
             center_fractions (List[float]): Fraction of low-frequency columns to be retained.
@@ -35,7 +35,7 @@ class MaskFunc():
 
         self.center_fractions = center_fractions
         self.accelerations = accelerations
-        self.rng = np.random.RandomState()
+        self.rng = np.random.RandomState(seed=seed)
 
     def choose_acceleration(self):
         choice = self.rng.randint(0, len(self.accelerations))
@@ -65,7 +65,7 @@ class RandomMaskFunc(MaskFunc):
     probability that 8-fold acceleration with 4% center fraction is selected.
     """
 
-    def __init__(self, center_fractions, accelerations):
+    def __init__(self, center_fractions, accelerations, seed=None):
         """
         Args:
             center_fractions (List[float]): Fraction of low-frequency columns to be retained.
@@ -82,7 +82,7 @@ class RandomMaskFunc(MaskFunc):
 
         self.center_fractions = center_fractions
         self.accelerations = accelerations
-        self.rng = np.random.RandomState()
+        self.rng = np.random.RandomState(seed)
 
     def __call__(self, shape, seed=None):
         """
@@ -111,9 +111,9 @@ class RandomMaskFunc(MaskFunc):
         # Reshape the mask
         mask_shape = [1 for _ in shape]
         mask_shape[-2] = num_cols
-        mask = torch.from_numpy(mask.reshape(*mask_shape).astype(np.float32))
+        #mask = torch.from_numpy(mask.reshape(*mask_shape).astype(np.float32))
 
-        return mask
+        return mask.reshape(*mask_shape).astype(np.float32)
 
 class EquispacedMaskFunc(MaskFunc):
     """
