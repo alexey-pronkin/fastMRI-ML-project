@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import torch
 import torch.nn.functional as F
@@ -67,6 +68,34 @@ def load_torch_model(model, filename):
     state_dict = torch.load(filename)
     model.load_state_dict(state_dict)
     return model
+
+
+def dumps_train_params(**kwargs):
+    str_params = [f'\t\'{k}\': {v}'.replace('\n', '' ) for k, v in kwargs.items()]
+    str_params = ['Train params:'] + str_params
+    
+    return '\n'.join(str_params)
+
+
+def write_train_params(log_file, **kwargs):
+    with open(log_file, 'w') as f:
+        params = dumps_train_params(**kwargs)
+        f.write(params + '\n\n')
+
+
+def save_history_loss(path_to_save, train_losses, val_losses=None):
+
+    losses = {'Train': train_losses, 'Val': val_losses}
+
+    with open(path_to_save, 'wb') as f:
+        pickle.dump(losses, f)
+
+
+def load_history_loss(path_to_history):
+    with open(path_to_history, 'rb') as f:
+        losses = pickle.load(f)
+        
+    return losses
 
 
 def scale_MRI(image, low=2, high=98):

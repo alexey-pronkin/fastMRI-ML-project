@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class Generator(nn.Module):
+class UnetGenerator(nn.Module):
 
     def __init__(self, d=64, mean=0, std=0.02):
         super().__init__()
