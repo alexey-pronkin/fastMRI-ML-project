@@ -104,7 +104,7 @@ class Pix2PixModel:
         generator_train_losses = []
 
         for source, sampled in train_loader:
-
+            print(source.shape)
             source = source.to(self.device)
             sampled = sampled.to(self.device)
 
@@ -286,12 +286,62 @@ def init_data_loaders(args):
 
     return train_loader, val_loader
 
+###3D###
+def init_train_loader3D(args, path_to_source_train, path_to_sampled_train):
+    fmri_train = fastMRIData3D(path_to_source_train, path_to_sampled_train)
+    if args.random_subset:
+        sampler = torch_data.RandomSampler(fmri_train, replacement=True, num_samples=args.random_subset)
+        train_loader = torch_data.DataLoader(fmri_train, sampler=sampler, batch_size=args.train_batch_size,
+                                             shuffle=False, num_workers=args.loader_workers)
+    else:
+        train_loader = torch_data.DataLoader(fmri_train, batch_size=args.train_batch_size,
+                                             shuffle=True, num_workers=args.loader_workers)
+
+    return train_loader
+
+
+def init_val_loader3D(args, path_to_source_val, path_to_sampled_val):
+    if args.with_eval:
+        fmri_val = fastMRIData3D(path_to_source_val, path_to_sampled_val)
+        fmri_val.images = fmri_val.images[:5]
+
+        val_loader = torch_data.DataLoader(fmri_val, batch_size=args.val_batch_size,
+                                           shuffle=False, num_workers=args.loader_workers)
+    else:
+        val_loader = None
+
+    return val_loader
+
+
+def init_data_loaders3D(args):
+    torch.manual_seed(args.random_state)
+
+    path_to_source_train = os.path.join(args.path_to_data, f'{DATA_PREFIX}_source_train')
+    path_to_source_val = os.path.join(args.path_to_data, f'{DATA_PREFIX}_source_val')
+    path_to_sampled_train = os.path.join(args.path_to_data, 
+                                         f'{DATA_PREFIX}_sampled_x{args.acceleration}_train')
+    path_to_sampled_val = os.path.join(args.path_to_data, 
+                                       f'{DATA_PREFIX}_sampled_x{args.acceleration}_val')
+
+    train_loader = init_train_loader3D(args, path_to_source_train, path_to_sampled_train)
+    val_loader = init_val_loader3D(args, path_to_source_val, path_to_sampled_val)
+
+    if args.verbose:
+        print(f'Train data: {path_to_source_train} | {path_to_sampled_train}')
+        print(f'Val data: {path_to_source_val} | {path_to_sampled_val}')
+
+    return train_loader, val_loader
+
 
 def main():
     args = parse_args()
 
     torch.manual_seed(args.random_state)
-    torch.backends.cudnn.benchmark = True
+    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    if args.device.startswith("cuda"):
+        torch.backends.cudnn.benchmark = True
+    device = torch.device(args.device)
+
     if args.model_type == "pix2pix":
         G = UnetGenerator()
         D = Discriminator()
@@ -301,9 +351,9 @@ def main():
         G_optimizer = torch.optim.Adam(G.parameters(), lr=args.G_lr, betas=betas)
         D_optimizer = torch.optim.Adam(D.parameters(), lr=args.D_lr, betas=betas)
 
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        
 
-        if device == torch.device('cuda:0'):
+        if device == torch.device(args.device):
             torch.cuda.empty_cache()
 
         train_loader, val_loader = init_data_loaders(args)
@@ -319,12 +369,11 @@ def main():
         G_optimizer = torch.optim.Adam(G.parameters(), lr=args.G_lr, betas=betas)
         D_optimizer = torch.optim.Adam(D.parameters(), lr=args.D_lr, betas=betas)
 
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-        if device == torch.device('cuda:0'):
+        if device == torch.device(args.device):
             torch.cuda.empty_cache()
 
-        train_loader, val_loader = init_data_loaders(args)
+        train_loader, val_loader = init_data_loaders3D(args)
 
         _model = Pix2PixModel(G, D, G_optimizer, D_optimizer, args.l1_lambda, args.acceleration, 
                                args.path_to_results, device, args.model_name)

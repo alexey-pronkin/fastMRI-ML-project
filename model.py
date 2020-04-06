@@ -113,7 +113,7 @@ def normal_init(m, mean, std):
 
 class UnetGenerator3D(nn.Module):
     def __init__(self, d=32, mean=0, std=0.02):
-        super(3DUnetGenerator, self).__init__()
+        super(UnetGenerator3D, self).__init__()
         self.conv1 = nn.Conv3d(1, d, 4, 2, 1)
         self.conv2 = nn.Conv3d(d, d * 2, 4, 2, 1)
         self.conv2_bn = nn.BatchNorm3d(d * 2)
@@ -184,7 +184,7 @@ class UnetGenerator3D(nn.Module):
 
 class Discriminator3D(nn.Module):
     def __init__(self, d=64, mean=0, std=0.02):
-        super(3DDiscriminator, self).__init__()
+        super(Discriminator3D, self).__init__()
         self.conv1 = nn.Conv3d(2, d, 4, 2, 1)
         self.conv2 = nn.Conv3d(d, d * 2, 4, 2, 1)
         self.conv2_bn = nn.BatchNorm3d(d * 2)

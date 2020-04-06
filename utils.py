@@ -41,10 +41,11 @@ class fastMRIData3D(torch_data.Dataset):
         sampled_images = set(os.listdir(path_to_sampled))
         intersected_images = source_images.intersection(sampled_images)
         images = sorted([img for img in intersected_images if img.endswith('npy')])
-        ids = set([image_name.split("_")[0] for image_name in images])
-        images_dict = {}
-        for _id in ids:
-            images_dict[_id] = sorted([img.split("_")[1] for img in images if img.startswith(str(_id))])
+        self.images = images
+        self.ids = set([image_name.split("_")[0] for image_name in self.images])
+        self.images_dict = {}
+        for _id in self.ids:
+            self.images_dict[_id] = sorted([int(img.split("_")[1].split(".")[0]) for img in self.images if img.startswith(str(_id))])
         
 
     def __len__(self):
@@ -53,8 +54,8 @@ class fastMRIData3D(torch_data.Dataset):
     def __getitem__(self, idx):
         image_name = self.images[idx]
         image_id, image_postfix = image_name.split("_")
-        image_postfix = int(image_postfix)
-        max_image_postfix = images_dict[image_id][-1]
+        image_postfix = int(image_postfix.split(".")[0])
+        max_image_postfix = self.images_dict[image_id][-1]
         if image_postfix == 1:
             source_images = [
             npy_load(os.path.join(self.path_to_source, image_name)),
@@ -120,7 +121,7 @@ class fastMRIData3D(torch_data.Dataset):
             npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-1))),
             npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-2))),
             npy_load(os.path.join(self.path_to_source, image_name)),
-            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+1)))
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+1))),
             npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+2)))
             ]
             sampled_images = [
