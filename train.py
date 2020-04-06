@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.utils.data as torch_data
 
-from model import UnetGenerator, Discriminator
+from model import UnetGenerator, Discriminator, UnetGenerator3D, Discriminator3D
 from utils import *
 
 
@@ -215,9 +215,11 @@ class Pix2PixModel:
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--acceleration', type=int, required=True)
+    parser.add_argument('--model_type', type=str, default='pix2pix', help='pix2pix or 3D')
+    parser.add_argument('--device', type=str, default='cuda:0', help='cpu:0, cpu:1, cuda:0, cuda:1, cuda:2, cuda:3')
+    parser.add_argument('--acceleration', type=int, required=True, help='2,4,8')
     parser.add_argument('--with_eval', type=int, default=1)
-    parser.add_argument('--model_name', type=str, default=None)
+    parser.add_argument('--model_name', type=str, default=None, help='Name of the new model')
 
     parser.add_argument('--path_to_data', type=str, default='data')
     parser.add_argument('--path_to_results', type=str, default='results')
@@ -226,7 +228,7 @@ def parse_args():
     parser.add_argument('--val_batch_size', type=int, default=32)
     parser.add_argument('--loader_workers', type=int, default=8)
 
-    parser.add_argument('--random_subset', type=int, default=None)
+    parser.add_argument('--random_subset', type=int, default=None, help="Number of random samples for 1 epoch")
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--D_lr', type=float, default=0.0002)
     parser.add_argument('--G_lr', type=float, default=0.0002)
@@ -289,37 +291,57 @@ def main():
     args = parse_args()
 
     torch.manual_seed(args.random_state)
+    torch.backends.cudnn.benchmark = True
+    if args.model_type == "pix2pix":
+        G = UnetGenerator()
+        D = Discriminator()
 
-    G = UnetGenerator()
-    D = Discriminator()
+        betas = (0.5, 0.999)
 
-    betas = (0.5, 0.999)
+        G_optimizer = torch.optim.Adam(G.parameters(), lr=args.G_lr, betas=betas)
+        D_optimizer = torch.optim.Adam(D.parameters(), lr=args.D_lr, betas=betas)
 
-    G_optimizer = torch.optim.Adam(G.parameters(), lr=args.G_lr, betas=betas)
-    D_optimizer = torch.optim.Adam(D.parameters(), lr=args.D_lr, betas=betas)
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        if device == torch.device('cuda:0'):
+            torch.cuda.empty_cache()
 
-    if device == torch.device('cuda:0'):
-        torch.cuda.empty_cache()
+        train_loader, val_loader = init_data_loaders(args)
 
-    train_loader, val_loader = init_data_loaders(args)
+        _model = Pix2PixModel(G, D, G_optimizer, D_optimizer, args.l1_lambda, args.acceleration, 
+                               args.path_to_results, device, args.model_name)
+    elif args.model_type == "3D":
+        G = UnetGenerator3D()
+        D = Discriminator3D()
 
-    pix2pix = Pix2PixModel(G, D, G_optimizer, D_optimizer, args.l1_lambda, args.acceleration, 
-                           args.path_to_results, device, args.model_name)
+        betas = (0.5, 0.999)
+
+        G_optimizer = torch.optim.Adam(G.parameters(), lr=args.G_lr, betas=betas)
+        D_optimizer = torch.optim.Adam(D.parameters(), lr=args.D_lr, betas=betas)
+
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+        if device == torch.device('cuda:0'):
+            torch.cuda.empty_cache()
+
+        train_loader, val_loader = init_data_loaders(args)
+
+        _model = Pix2PixModel(G, D, G_optimizer, D_optimizer, args.l1_lambda, args.acceleration, 
+                               args.path_to_results, device, args.model_name)
+
 
     if args.verbose:
-        print('Path to results:', pix2pix.results_dir)
+        print('Path to results:', _model.results_dir)
         print('Device:', device)
-        print('Model_name:', pix2pix.model_name)
+        print('Model_name:', _model.model_name)
         print()
 
     if args.logging:
-        write_train_params(pix2pix.log_file, device=device, random_state=args.random_state, 
+        write_train_params(_model.log_file, device=device, random_state=args.random_state, 
                            epochs=args.epochs, l1_lambda=args.l1_lambda, 
                            G_optimizer=G_optimizer, D_optimizer=D_optimizer)
 
-    pix2pix.train(args.epochs, train_loader, val_loader, 
+    _model.train(args.epochs, train_loader, val_loader, 
                   verbose=args.verbose, logging=args.logging)
 
 

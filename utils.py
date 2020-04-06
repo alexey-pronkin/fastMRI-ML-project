@@ -8,7 +8,6 @@ import torch.utils.data as torch_data
 import numpy as np
 from skimage.measure import compare_psnr, compare_ssim
 
-
 class fastMRIData(torch_data.Dataset):
     def __init__(self, path_to_source, path_to_sampled):
         super().__init__()
@@ -29,12 +28,111 @@ class fastMRIData(torch_data.Dataset):
     def __getitem__(self, idx):
         source_image = npy_load(os.path.join(self.path_to_source, self.images[idx]))
         sampled_image = npy_load(os.path.join(self.path_to_sampled, self.images[idx]))
-
         source_image = torch.from_numpy(source_image)
         sampled_image = torch.from_numpy(sampled_image)
 
         return source_image, sampled_image
+class fastMRIData3D(torch_data.Dataset):
+    def __init__(self, path_to_source, path_to_sampled):
+        super().__init__()
+        self.path_to_source = path_to_source
+        self.path_to_sampled = path_to_sampled
+        source_images = set(os.listdir(path_to_source))
+        sampled_images = set(os.listdir(path_to_sampled))
+        intersected_images = source_images.intersection(sampled_images)
+        images = sorted([img for img in intersected_images if img.endswith('npy')])
+        ids = set([image_name.split("_")[0] for image_name in images])
+        images_dict = {}
+        for _id in ids:
+            images_dict[_id] = sorted([img.split("_")[1] for img in images if img.startswith(str(_id))])
+        
 
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        image_name = self.images[idx]
+        image_id, image_postfix = image_name.split("_")
+        image_postfix = int(image_postfix)
+        max_image_postfix = images_dict[image_id][-1]
+        if image_postfix == 1:
+            source_images = [
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+1))),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+2)))
+            ]
+            sampled_images = [
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+1))),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+2)))
+            ]
+        elif image_postfix == 2:
+            source_images = [
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+1))),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+2)))
+            ]
+            sampled_images = [
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+1))),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+2)))
+            ]
+        elif image_postfix == max_image_postfix:
+            source_images = [
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-2))),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, image_name))
+            ]
+            sampled_images = [
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-2))),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, image_name))
+            ]
+        elif image_postfix == max_image_postfix-1:
+            source_images = [
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-2))),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+1)))
+            ]
+            sampled_images = [
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-2))),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+1)))
+            ]
+        else:
+            source_images = [
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix-2))),
+            npy_load(os.path.join(self.path_to_source, image_name)),
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+1)))
+            npy_load(os.path.join(self.path_to_source, str(image_id) + "_" + str(image_postfix+2)))
+            ]
+            sampled_images = [
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-1))),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix-2))),
+            npy_load(os.path.join(self.path_to_sampled, image_name)),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+1))),
+            npy_load(os.path.join(self.path_to_sampled, str(image_id) + "_" + str(image_postfix+2)))
+            ]
+        source_images = torch.from_numpy(np.stack(source_images, axis=2))
+        sampled_images = torch.from_numpy(np.stack(sampled_images, axis=2))
+        return source_images, sampled_images
 
 def compare_imgs(img_true, img_rec, verbose=True):
 
